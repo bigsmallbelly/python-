@@ -7,6 +7,10 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Safari 捲動 */
+    html { -webkit-text-size-adjust: 100%; }
+    body { -webkit-overflow-scrolling: touch; }
+
     body {
       font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       background: #1a1a2e;
@@ -67,11 +71,14 @@
       border: 1px solid #1a4a80;
       border-radius: 8px;
       color: #e0e0e0;
-      font-size: .95rem;
+      font-size: 16px;          /* 防止 iOS Safari 自動放大 */
       padding: 9px 12px;
       outline: none;
+      -webkit-transition: border-color .2s;
       transition: border-color .2s;
       width: 100%;
+      -webkit-appearance: none; /* 移除 iOS 預設樣式 */
+      appearance: none;
     }
     input[type="text"]:focus,
     input[type="number"]:focus,
@@ -96,10 +103,11 @@
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
       position: absolute;
-      inset: 0;
+      top: 0; right: 0; bottom: 0; left: 0;
       background: #2d3748;
       border-radius: 26px;
       cursor: pointer;
+      -webkit-transition: .3s;
       transition: .3s;
     }
     .slider::before {
@@ -109,6 +117,7 @@
       left: 3px; bottom: 3px;
       background: #a0aec0;
       border-radius: 50%;
+      -webkit-transition: .3s;
       transition: .3s;
     }
     .switch input:checked + .slider { background: #f5c842; }
@@ -137,8 +146,13 @@
       color: #1a1a2e;
       cursor: pointer;
       letter-spacing: 2px;
+      -webkit-transition: opacity .2s, -webkit-transform .1s;
       transition: opacity .2s, transform .1s;
       margin-top: 6px;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      touch-action: manipulation;
     }
     button[type="submit"]:hover { opacity: .9; }
     button[type="submit"]:active { transform: scale(.98); }

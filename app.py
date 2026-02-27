@@ -122,4 +122,9 @@ def score():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    import socket
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    print(f"\n  本機：  http://localhost:5000")
+    print(f"  區網：  http://{local_ip}:5000  ← 手機用這個\n")
+    app.run(debug=True, host="0.0.0.0", port=5000)
