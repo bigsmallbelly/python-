@@ -108,8 +108,17 @@ class HandDecomposer:
         first = tiles[0]
         rest = tiles[1:]
 
-        # 嘗試刻子
         matches = [t for t in rest if t.name == first.name]
+
+        # 嘗試槓子（4張相同）優先於刻子
+        if len(matches) >= 3:
+            new_tiles = [t for t in rest if t.name != first.name]
+            meld = Meld(MeldType.GANGZI, [first] * 4, is_concealed=True)
+            result = self._find_melds(new_tiles, need - 1)
+            if result is not None:
+                return [meld] + result
+
+        # 嘗試刻子（3張相同）
         if len(matches) >= 2:
             new_tiles = [t for t in rest if t.name != first.name] + matches[2:]
             meld = Meld(MeldType.KEZI, [first] * 3, is_concealed=True)
