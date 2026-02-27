@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台式麻將北部算法計分器</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: #f5c842;
+      letter-spacing: 2px;
+      margin-bottom: 28px;
+      text-shadow: 0 2px 8px rgba(245,200,66,.35);
+    }
+
+    .card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 14px;
+      padding: 28px 32px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.45);
+      margin-bottom: 24px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      color: #f5c842;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #0f3460;
+      padding-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    /* ── grid layout ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .span-2 { grid-column: span 2; }
+
+    /* ── form elements ── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+      font-size: .82rem;
+      color: #a0aec0;
+      letter-spacing: .5px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      background: #0f3460;
+      border: 1px solid #1a4a80;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: .95rem;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .2s;
+      width: 100%;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus { border-color: #f5c842; }
+
+    select option { background: #0f3460; }
+
+    /* ── toggle switch ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toggle-label { font-size: .9rem; color: #e0e0e0; }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #2d3748;
+      border-radius: 26px;
+      cursor: pointer;
+      transition: .3s;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 20px; width: 20px;
+      left: 3px; bottom: 3px;
+      background: #a0aec0;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    .switch input:checked + .slider { background: #f5c842; }
+    .switch input:checked + .slider::before {
+      transform: translateX(20px);
+      background: #1a1a2e;
+    }
+
+    /* ── dealer section (dependent on toggle) ── */
+    #dealer-extra {
+      margin-top: 14px;
+      display: none;
+      gap: 16px;
+    }
+    #dealer-extra.visible { display: grid; grid-template-columns: 1fr 1fr; }
+
+    /* ── submit ── */
+    button[type="submit"] {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #f5c842, #e0a800);
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: opacity .2s, transform .1s;
+      margin-top: 6px;
+    }
+    button[type="submit"]:hover { opacity: .9; }
+    button[type="submit"]:active { transform: scale(.98); }
+
+    /* ── result card ── */
+    .result-card {
+      background: #16213e;
+      border: 2px solid #f5c842;
+      border-radius: 14px;
+      padding: 24px 28px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 4px 24px rgba(245,200,66,.18);
+      animation: fadeIn .35s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+
+    .result-card h2 {
+      color: #f5c842;
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid #0f3460;
+      font-size: .93rem;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-cat { color: #a0aec0; font-size: .78rem; margin-right: 8px; }
+    .detail-pts { color: #68d391; font-weight: 700; font-size: 1rem; }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 2px solid #f5c842;
+    }
+    .total-row span:first-child { font-size: 1rem; color: #e0e0e0; }
+    .total-pts { font-size: 2.2rem; font-weight: 900; color: #f5c842;
+                 text-shadow: 0 2px 12px rgba(245,200,66,.5); }
+
+    .error-msg {
+      color: #fc8181;
+      font-size: .9rem;
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(252,129,129,.08);
+      border-radius: 8px;
+      border: 1px solid rgba(252,129,129,.3);
+    }
+
+    /* tile-badge strip */
+    .tile-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .tile-badge {
+      background: #0f3460;
+      border: 1px solid #1a4a80;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: .82rem;
+      color: #cbd5e0;
+    }
+
+    /* helper text */
+    .hint { font-size: .75rem; color: #718096; margin-top: 4px; }
+
+    @media (max-width: 520px) {
+      .grid-2, .grid-3, #dealer-extra.visible { grid-template-columns: 1fr; }
+      .span-2 { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🀄 台式麻將北部算法計分器</h1>
+
+  <div class="card">
+    <h2>手牌輸入</h2>
+    <form id="score-form" onsubmit="submitForm(event)">
+
+      <!-- 手牌 -->
+      <div class="field" style="margin-bottom:16px">
+        <label for="hand">手牌（空白分隔）</label>
+        <input type="text" id="hand" name="hand" placeholder="例：3萬 4萬 5萬 7萬 8萬 9萬 8條 8條 8條 8條 6餅 7餅 8餅 中 中"
+               value="{{ form.hand or '' }}">
+        <span class="hint">萬子：1萬～9萬　條子：1條～9條　餅子：1餅～9餅
+          <br>風牌：東 南 西 北　三元：中 發 白　花牌：梅 蘭 菊 竹 春 夏 秋 冬</span>
+      </div>
+
+      <!-- 胡牌張 -->
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="field">
+          <label for="win_tile">胡牌張</label>
+          <input type="text" id="win_tile" name="win_tile" placeholder="例：中" value="{{ form.win_tile or '' }}">
+        </div>
+
+        <!-- 胡牌方式 -->
+        <div class="field">
+          <label for="win_method">胡牌方式</label>
+          <select id="win_method" name="win_method" onchange="onMethodChange()">
+            <option value="self_draw"  {% if form.win_method=='self_draw'  %}selected{% endif %}>🎲 自摸</option>
+            <option value="discard"   {% if form.win_method=='discard'    %}selected{% endif %}>🎯 放槍（別人打出）</option>
+            <option value="robbing"   {% if form.win_method=='robbing'    %}selected{% endif %}>⚡ 搶槓</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 門清 / 獨聽 / 特殊 -->
+      <div class="grid-3" style="margin-bottom:18px">
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="menqing" name="menqing" {% if form.menqing %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">門清</span>
+        </div>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="dutin" name="dutin" {% if form.dutin %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">獨聽</span>
+        </div>
+        <div class="toggle-row" id="row-after-kong">
+          <label class="switch">
+            <input type="checkbox" id="after_kong" name="after_kong" {% if form.after_kong %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">槓上開花</span>
+        </div>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="last_tile" name="last_tile" {% if form.last_tile %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">海底 / 河底</span>
+        </div>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="tianhu" name="tianhu" {% if form.tianhu %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">天胡</span>
+        </div>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="dihu" name="dihu" {% if form.dihu %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">地胡</span>
+        </div>
+      </div>
+
+      <hr style="border-color:#0f3460;margin-bottom:18px">
+
+      <!-- 莊家設定 -->
+      <div class="toggle-row" style="margin-bottom:14px">
+        <label class="switch">
+          <input type="checkbox" id="is_dealer" name="is_dealer"
+                 onchange="toggleDealer()" {% if form.is_dealer %}checked{% endif %}>
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label" style="font-size:1rem;font-weight:600">莊家</span>
+      </div>
+
+      <div id="dealer-extra" class="{{ 'visible' if form.is_dealer else '' }}">
+        <div class="field">
+          <label for="consecutive_wins">連莊次數</label>
+          <input type="number" id="consecutive_wins" name="consecutive_wins"
+                 min="0" max="20" value="{{ form.consecutive_wins or 0 }}">
+          <span class="hint">0 = 初次當莊；1 = 連莊一次，依此類推</span>
+        </div>
+        <div class="field">
+          <label for="round_wind">圈風</label>
+          <select id="round_wind" name="round_wind">
+            <option value="east"  {% if (form.round_wind or 'east')=='east'  %}selected{% endif %}>東圈</option>
+            <option value="south" {% if form.round_wind=='south' %}selected{% endif %}>南圈</option>
+            <option value="west"  {% if form.round_wind=='west'  %}selected{% endif %}>西圈</option>
+            <option value="north" {% if form.round_wind=='north' %}selected{% endif %}>北圈</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 座位風（非莊家也可能有圈風刻） -->
+      <div class="grid-2" style="margin-top:16px">
+        <div class="field">
+          <label for="seat_wind">門風（座位）</label>
+          <select id="seat_wind" name="seat_wind">
+            <option value="east"  {% if (form.seat_wind or 'east')=='east'  %}selected{% endif %}>東（莊）</option>
+            <option value="south" {% if form.seat_wind=='south' %}selected{% endif %}>南</option>
+            <option value="west"  {% if form.seat_wind=='west'  %}selected{% endif %}>西</option>
+            <option value="north" {% if form.seat_wind=='north' %}selected{% endif %}>北</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="seat_number">座位號（影響花槓判定）</label>
+          <select id="seat_number" name="seat_number">
+            <option value="1" {% if (form.seat_number|string or '1')=='1' %}selected{% endif %}>1（東）</option>
+            <option value="2" {% if (form.seat_number|string)=='2' %}selected{% endif %}>2（南）</option>
+            <option value="3" {% if (form.seat_number|string)=='3' %}selected{% endif %}>3（西）</option>
+            <option value="4" {% if (form.seat_number|string)=='4' %}selected{% endif %}>4（北）</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" style="margin-top:22px">計算台數</button>
+    </form>
+  </div>
+
+  <!-- 結果區 -->
+  {% if result %}
+  <div class="result-card">
+    <h2>計分明細</h2>
+
+    {% if result.error %}
+      <div class="error-msg">{{ result.error }}</div>
+    {% else %}
+      <!-- 識別出的牌 -->
+      {% if result.tiles %}
+      <div class="tile-strip" style="margin-bottom:14px">
+        {% for t in result.tiles %}<span class="tile-badge">{{ t }}</span>{% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- 明細 -->
+      {% for d in result.details %}
+      <div class="detail-row">
+        <span><span class="detail-cat">[{{ d.category }}]</span>{{ d.description }}</span>
+        <span class="detail-pts">+{{ d.points }} 台</span>
+      </div>
+      {% endfor %}
+
+      <div class="total-row">
+        <span>合計</span>
+        <span class="total-pts">{{ result.total }} 台</span>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <script>
+    function toggleDealer() {
+      const checked = document.getElementById('is_dealer').checked;
+      const extra = document.getElementById('dealer-extra');
+      extra.classList.toggle('visible', checked);
+    }
+
+    function onMethodChange() {
+      const method = document.getElementById('win_method').value;
+      // 槓上開花只在自摸時有意義
+      document.getElementById('row-after-kong').style.opacity =
+        method === 'self_draw' ? '1' : '0.35';
+    }
+
+    // 送出前 AJAX → 不換頁，結果動態插入
+    async function submitForm(e) {
+      e.preventDefault();
+      const form = document.getElementById('score-form');
+      const data = new FormData(form);
+
+      // 勾選框需手動加入（FormData 不含 unchecked）
+      ['menqing','dutin','after_kong','last_tile','tianhu','dihu','is_dealer'].forEach(id => {
+        const el = document.getElementById(id);
+        data.set(id, el.checked ? '1' : '0');
+      });
+
+      const res = await fetch('/score', { method: 'POST', body: data });
+      const html = await res.text();
+
+      // 將伺服器回傳的 result-card HTML 插入頁面
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newCard = doc.querySelector('.result-card');
+      const oldCard = document.querySelector('.result-card');
+      if (newCard) {
+        if (oldCard) oldCard.replaceWith(newCard);
+        else document.body.appendChild(newCard);
+        newCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // 初始化
+    onMethodChange();
+  </script>
+</body>
+</html>
